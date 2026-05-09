@@ -9,3 +9,5 @@ env/
 ENV/
 .pytest_cache/
 output/
+build/
+dist/

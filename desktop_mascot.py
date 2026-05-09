@@ -23,11 +23,15 @@ from PIL import Image, ImageGrab
 from ui_widgets import ChatBubble, PillButton, RoundedPopupMenu, TogglePill
 
 
-APP_DIR = Path(__file__).resolve().parent
+if getattr(sys, "frozen", False):
+    APP_DIR = Path(sys.executable).resolve().parent
+    RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR))
+else:
+    APP_DIR = Path(__file__).resolve().parent
+    RESOURCE_DIR = APP_DIR
+
 ENV_FILE = APP_DIR / ".env"
-APP_ICON = APP_DIR / "assets" / "desktop_mascot.ico"
-APP_ICON_PNG = APP_DIR / "assets" / "desktop_mascot.png"
-APP_USER_MODEL_ID = "DesktopMascot.LocalApp.1"
+APP_USER_MODEL_ID = "DesktopMascot.LocalApp.11"
 
 
 def set_windows_app_id() -> None:
@@ -39,19 +43,23 @@ def set_windows_app_id() -> None:
         pass
 
 
-def apply_app_icon(window: tk.Tk | tk.Toplevel) -> None:
-    if APP_ICON.exists():
-        try:
-            window.iconbitmap(default=str(APP_ICON))
-        except tk.TclError:
-            pass
-    if APP_ICON_PNG.exists():
-        try:
-            photo = tk.PhotoImage(file=str(APP_ICON_PNG))
-            window.iconphoto(True, photo)
-            window._app_icon_photo = photo
-        except tk.TclError:
-            pass
+def show_in_windows_taskbar(window: tk.Tk | tk.Toplevel) -> None:
+    if platform.system() != "Windows":
+        return
+    try:
+        hwnd = window.winfo_id()
+        gwl_exstyle = -20
+        ws_ex_appwindow = 0x00040000
+        ws_ex_toolwindow = 0x00000080
+        get_style = ctypes.windll.user32.GetWindowLongPtrW
+        set_style = ctypes.windll.user32.SetWindowLongPtrW
+        style = get_style(hwnd, gwl_exstyle)
+        style = (style | ws_ex_appwindow) & ~ws_ex_toolwindow
+        set_style(hwnd, gwl_exstyle, style)
+        window.withdraw()
+        window.after(10, window.deiconify)
+    except Exception:
+        pass
 
 def normalize_language(value: str) -> str:
     value = value.strip().lower()
@@ -685,7 +693,6 @@ class ChatWindow(tk.Toplevel):
         self.title("桌宠聊天")
         self.geometry("460x600")
         self.minsize(380, 480)
-        apply_app_icon(self)
         self.protocol("WM_DELETE_WINDOW", self.withdraw)
 
         self._build_ui()
@@ -808,6 +815,7 @@ class ChatWindow(tk.Toplevel):
 
     def show(self) -> None:
         self.deiconify()
+        show_in_windows_taskbar(self)
         self.lift()
         self.input_box.focus_set()
 
@@ -1020,7 +1028,6 @@ def main() -> int:
     )
     root = tk.Tk()
     root.title("Desktop Mascot")
-    apply_app_icon(root)
 
     tts = AITTS(config, config.language)
     llm = LLMClient(config)
@@ -1029,6 +1036,8 @@ def main() -> int:
     observer = AutoObserver(root, llm, chat, tts, config)
     chat.auto_observer = observer
     observer.start()
+    if "--open-chat" in sys.argv:
+        root.after(500, chat.show)
 
     def handle_error(exc: Exception) -> None:
         messagebox.showerror("桌宠错误", str(exc))

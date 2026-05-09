@@ -13,6 +13,28 @@ python desktop_mascot.py
 
 In `.env`, set `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and a model that supports image input.
 
+## Build EXE
+
+Install PyInstaller:
+
+```powershell
+python -m pip install pyinstaller
+```
+
+Build with the checked-in spec file:
+
+```powershell
+python -m PyInstaller --clean --noconfirm desktop_mascot.spec
+```
+
+Run the packaged app:
+
+```powershell
+dist\desktop_mascot.exe
+```
+
+Use the spec file instead of only running a long `pyinstaller` command. The current build intentionally does not set a custom icon, so Tk/PyInstaller use their default window icon.
+
 For MiniMax TTS, set:
 
 ```text
