@@ -27,5 +27,25 @@ def clean_model_reply(text: str) -> str:
 
 def tts_friendly_text(text: str) -> str:
     text = clean_model_reply(text)
-    text = re.sub(r"[#*_`~>\[\](){}<>|\\/@$%^&=+:;；：，,。.!！?？、…·\"'“”‘’《》【】]", " ", text)
+    text = re.sub(r"[#*_`~>\[\](){}<>|\\/@$%^&=+:;；：·\"'“”‘’《》【】]", " ", text)
+    text = re.sub(r"\s*([，,、。.!！?？])\s*", r"\1", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def minimax_tts_text(text: str) -> str:
+    text = tts_friendly_text(text)
+    pauses = {
+        "\u0001": "<#0.18#>",
+        "\u0002": "<#0.35#>",
+        "\u0003": "<#0.45#>",
+    }
+    pause_tokens = "".join(pauses)
+    text = text.replace("……", "\u0003").replace("...", "\u0003")
+    text = re.sub(r"[，,、]+", "\u0001", text)
+    text = re.sub(r"[。.!！?？]+", "\u0002", text)
+    text = re.sub(f"[{pause_tokens}]{{2,}}", "\u0002", text)
+    text = re.sub(rf"^\s*[{pause_tokens}]+", "", text)
+    text = re.sub(rf"[{pause_tokens}]+\s*$", "", text)
+    for marker, pause in pauses.items():
+        text = text.replace(marker, pause)
     return re.sub(r"\s+", " ", text).strip()

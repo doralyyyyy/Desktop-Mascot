@@ -1,5 +1,6 @@
 import ctypes
 import platform
+import signal
 import sys
 import threading
 import time
@@ -500,12 +501,26 @@ def main() -> int:
     def handle_error(exc: Exception) -> None:
         messagebox.showerror("桌宠错误", str(exc))
 
+    def request_shutdown(_signum: int, _frame: object) -> None:
+        try:
+            root.after(0, root.quit)
+        except tk.TclError:
+            pass
+
+    previous_sigint_handler = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, request_shutdown)
+
     root.report_callback_exception = lambda _t, exc, _tb: handle_error(exc)
-    root.mainloop()
-    observer.stop()
-    tts.stop()
-    if isinstance(mascot, Live2DMascotWindow):
-        mascot.destroy()
+    try:
+        root.mainloop()
+    except KeyboardInterrupt:
+        root.quit()
+    finally:
+        signal.signal(signal.SIGINT, previous_sigint_handler)
+        observer.stop()
+        tts.stop()
+        if isinstance(mascot, Live2DMascotWindow):
+            mascot.destroy()
     _ = mascot
     return 0
 

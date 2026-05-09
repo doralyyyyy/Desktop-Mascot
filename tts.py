@@ -9,7 +9,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from config import AppConfig
-from text_utils import tts_friendly_text
+from text_utils import minimax_tts_text, tts_friendly_text
 
 
 class AITTS:
@@ -43,7 +43,7 @@ class AITTS:
         on_play_end: Callable[[], None] | None = None,
         on_error: Callable[[], None] | None = None,
     ) -> bool:
-        text = tts_friendly_text(text)
+        text = minimax_tts_text(text) if self.provider == "minimax" else tts_friendly_text(text)
         if not self.enabled or not self.api_key or not text:
             return False
         threading.Thread(

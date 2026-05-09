@@ -7,8 +7,8 @@ def normalize_language(value: str) -> str:
 
 def language_instruction(language: str) -> str:
     if language == "ja":
-        return "重要：接下来的桌宠回复只能使用日语。每次只说一句自然的日语口语，不要 Markdown，少用标点。"
-    return "重要：接下来的桌宠回复只能使用中文。每次只说一句自然的中文口语，不要 Markdown，少用标点。"
+        return "重要：接下来的桌宠回复只能使用日语。每次只说一句自然的日语口语，不要 Markdown，使用自然口语标点。"
+    return "重要：接下来的桌宠回复只能使用中文。每次只说一句自然的中文口语，不要 Markdown，使用自然口语标点。"
 
 
 def observe_prompt(language: str) -> str:
@@ -24,7 +24,7 @@ def observe_prompt(language: str) -> str:
         "如果屏幕里出现桌面上的 Live2D 桌宠角色，那就是你自己，不要围绕她的外观、位置或动作吐槽，也不要把她当成屏幕里的第三方角色来介绍。"
         "不要总是概括整个屏幕，优先留意一个具体细节，比如小字、通知、文件名、角落里的变化或当前光标附近的内容。"
         "根据这个细节主动闲聊或吐槽一句。"
-        "只说一句中文，不要解释你在截图，不要 Markdown，少用标点。"
+        "只说一句中文，不要解释你在截图，不要 Markdown，使用自然口语标点。"
     )
 
 

@@ -72,12 +72,8 @@ class Live2DMascotWindow:
             self.menu.close()
             self.menu = None
 
-        if self._process is not None and self._process.poll() is None:
-            self._process.terminate()
-            try:
-                self._process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                self._process.kill()
+        if self._process is not None:
+            _terminate_process_tree(self._process)
         self._process = None
 
         if self._server is not None:
@@ -231,6 +227,28 @@ def _child_command(callback_url: str, control_url: str, assets_dir: Path) -> lis
         ]
     )
     return command
+
+
+def _terminate_process_tree(process: subprocess.Popen[str]) -> None:
+    if process.poll() is not None:
+        return
+
+    if os.name == "nt":
+        creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        subprocess.run(
+            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=creation_flags,
+            check=False,
+        )
+    else:
+        process.terminate()
+
+    try:
+        process.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        process.kill()
 
 
 def _electron_command() -> str | None:
