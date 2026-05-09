@@ -64,6 +64,8 @@ class Live2DMascotWindow:
         except Exception:
             self.destroy()
             raise
+        self.root.bind("<<MascotTalkStart>>", lambda _event: self.start_talking(), add="+")
+        self.root.bind("<<MascotTalkStop>>", lambda _event: self.stop_talking(), add="+")
 
     def destroy(self) -> None:
         if self.menu is not None:
@@ -167,6 +169,12 @@ class Live2DMascotWindow:
 
     def play_idle_motion(self) -> None:
         self._send_control("idle")
+
+    def start_talking(self) -> None:
+        self._send_control("talk-start")
+
+    def stop_talking(self) -> None:
+        self._send_control("talk-stop")
 
     def _send_control(self, action: str) -> None:
         if not self._control_url:
@@ -374,6 +382,8 @@ def _run_qt_live2d_window(
     class ControlBridge(QObject):
         tap_requested = Signal()
         idle_requested = Signal()
+        talk_start_requested = Signal()
+        talk_stop_requested = Signal()
 
     class ConsolePage(QWebEnginePage):
         def javaScriptConsoleMessage(self, level, message: str, line_number: int, source_id: str) -> None:  # type: ignore[no-untyped-def]
@@ -427,6 +437,12 @@ def _run_qt_live2d_window(
         def play_idle_motion(self) -> None:
             self.view.page().runJavaScript("window.desktopMascot && window.desktopMascot.idle();")
 
+        def start_talking(self) -> None:
+            self.view.page().runJavaScript("window.desktopMascot && window.desktopMascot.startTalking();")
+
+        def stop_talking(self) -> None:
+            self.view.page().runJavaScript("window.desktopMascot && window.desktopMascot.stopTalking();")
+
         def _on_load_finished(self, ok: bool) -> None:
             if ok:
                 send_event("ready")
@@ -445,7 +461,15 @@ def _run_qt_live2d_window(
     bridge = ControlBridge()
     bridge.tap_requested.connect(window.play_tap_motion)
     bridge.idle_requested.connect(window.play_idle_motion)
-    control_server = _QtControlServer(control_url, bridge.tap_requested.emit, bridge.idle_requested.emit)
+    bridge.talk_start_requested.connect(window.start_talking)
+    bridge.talk_stop_requested.connect(window.stop_talking)
+    control_server = _QtControlServer(
+        control_url,
+        bridge.tap_requested.emit,
+        bridge.idle_requested.emit,
+        bridge.talk_start_requested.emit,
+        bridge.talk_stop_requested.emit,
+    )
     control_server.start()
     window.show()
     try:
@@ -520,10 +544,19 @@ def _disable_windows_rounded_corners(hwnd: int) -> None:
 
 
 class _QtControlServer:
-    def __init__(self, control_url: str, tap: Callable[[], None], idle: Callable[[], None]) -> None:
+    def __init__(
+        self,
+        control_url: str,
+        tap: Callable[[], None],
+        idle: Callable[[], None],
+        talk_start: Callable[[], None],
+        talk_stop: Callable[[], None],
+    ) -> None:
         self.control_url = urlparse(control_url)
         self.tap = tap
         self.idle = idle
+        self.talk_start = talk_start
+        self.talk_stop = talk_stop
         self._server: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
 
@@ -545,6 +578,10 @@ class _QtControlServer:
                     owner.tap()
                 elif action == "idle":
                     owner.idle()
+                elif action == "talk-start":
+                    owner.talk_start()
+                elif action == "talk-stop":
+                    owner.talk_stop()
                 self.send_response(204)
                 self.end_headers()
 

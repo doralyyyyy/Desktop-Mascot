@@ -40,6 +40,7 @@ class AITTS:
         self,
         text: str,
         on_play_start: Callable[[], None] | None = None,
+        on_play_end: Callable[[], None] | None = None,
         on_error: Callable[[], None] | None = None,
     ) -> bool:
         text = tts_friendly_text(text)
@@ -47,7 +48,7 @@ class AITTS:
             return False
         threading.Thread(
             target=self._speak_worker,
-            args=(text, self.language, on_play_start, on_error),
+            args=(text, self.language, on_play_start, on_play_end, on_error),
             daemon=True,
         ).start()
         return True
@@ -64,17 +65,28 @@ class AITTS:
         text: str,
         language: str,
         on_play_start: Callable[[], None] | None,
+        on_play_end: Callable[[], None] | None,
         on_error: Callable[[], None] | None,
     ) -> None:
         audio_path: Path | None = None
+        play_started = False
+
+        def handle_play_start() -> None:
+            nonlocal play_started
+            play_started = True
+            if on_play_start:
+                on_play_start()
+
         try:
             audio_path = self._request_audio(text, language)
-            self._play_audio(audio_path, on_play_start)
+            self._play_audio(audio_path, handle_play_start)
         except Exception:
             if on_error:
                 on_error()
             return
         finally:
+            if play_started and on_play_end:
+                on_play_end()
             if audio_path is not None:
                 try:
                     audio_path.unlink(missing_ok=True)

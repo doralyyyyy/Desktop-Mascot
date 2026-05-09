@@ -294,8 +294,23 @@ class ChatWindow(tk.Toplevel):
             shown.set()
             self.after(0, lambda: self._append_reply_and_update(reply, on_visible))
 
-        if not self.tts.speak(reply, on_play_start=show_reply, on_error=show_reply):
+        def start_talking() -> None:
+            self.after(0, self._notify_talk_start)
             show_reply()
+
+        if not self.tts.speak(
+            reply,
+            on_play_start=start_talking,
+            on_play_end=lambda: self.after(0, self._notify_talk_stop),
+            on_error=show_reply,
+        ):
+            show_reply()
+
+    def _notify_talk_start(self) -> None:
+        self.master.event_generate("<<MascotTalkStart>>", when="tail")
+
+    def _notify_talk_stop(self) -> None:
+        self.master.event_generate("<<MascotTalkStop>>", when="tail")
 
     def _append_reply_and_update(self, reply: str, on_visible: Callable[[], None] | None) -> None:
         self._append("桌宠", reply)

@@ -93,6 +93,10 @@ function createControlServer() {
       win?.webContents.send("desktop-action", "tap");
     } else if (action === "idle") {
       win?.webContents.send("desktop-action", "idle");
+    } else if (action === "talk-start") {
+      win?.webContents.send("desktop-action", "talk-start");
+    } else if (action === "talk-stop") {
+      win?.webContents.send("desktop-action", "talk-stop");
     }
     res.writeHead(204);
     res.end();

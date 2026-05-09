@@ -7,11 +7,19 @@ const MODEL_SAFE_WIDTH = 0.9;
 const MODEL_SAFE_HEIGHT = 0.92;
 const MODEL_X = 0.52;
 const MODEL_BOTTOM = 0.04;
+const MOUTH_PARAMETER_ID = "ParamA";
+const MOUTH_CHANGE_MIN_MS = 120;
+const MOUTH_CHANGE_MAX_MS = 260;
+const MOUTH_SMOOTHING = 0.22;
 
 async function main() {
   const motionPriority = PIXI.live2d?.MotionPriority || {};
   const tapMotionPriority = motionPriority.FORCE ?? 3;
   let lastTapMotionKey = "";
+  let talkRequestCount = 0;
+  let mouthValue = 0;
+  let mouthTarget = 0;
+  let nextMouthChangeAt = 0;
 
   const app = new PIXI.Application({
     view: document.getElementById("stage"),
@@ -51,6 +59,59 @@ async function main() {
     } catch (error) {
       console.debug("Live2D idle motion failed", error);
     }
+  }
+
+  function coreModel() {
+    return model.internalModel?.coreModel;
+  }
+
+  function setMouth(value) {
+    const mouth = Math.max(0, Math.min(1, value));
+    try {
+      coreModel()?.setParameterValueById(MOUTH_PARAMETER_ID, mouth, 1);
+    } catch (_error) {
+      // Models without ParamA simply will not lip-sync.
+    }
+  }
+
+  function nextMouthTarget() {
+    const mostlyClosed = Math.random() < 0.22;
+    return mostlyClosed ? Math.random() * 0.12 : 0.18 + Math.random() * 0.42;
+  }
+
+  function scheduleNextMouthChange(now) {
+    const delay = MOUTH_CHANGE_MIN_MS + Math.random() * (MOUTH_CHANGE_MAX_MS - MOUTH_CHANGE_MIN_MS);
+    nextMouthChangeAt = now + delay;
+  }
+
+  function updateMouth() {
+    const now = performance.now();
+    if (talkRequestCount > 0) {
+      if (now >= nextMouthChangeAt) {
+        mouthTarget = nextMouthTarget();
+        scheduleNextMouthChange(now);
+      }
+    } else {
+      mouthTarget = 0;
+      nextMouthChangeAt = 0;
+    }
+
+    mouthValue += (mouthTarget - mouthValue) * MOUTH_SMOOTHING;
+    setMouth(mouthValue < 0.02 ? 0 : mouthValue);
+  }
+
+  if (model.internalModel?.on) {
+    model.internalModel.on("beforeModelUpdate", updateMouth);
+  } else {
+    app.ticker.add(updateMouth);
+  }
+
+  function startTalking() {
+    talkRequestCount += 1;
+  }
+
+  function stopTalking() {
+    talkRequestCount = Math.max(0, talkRequestCount - 1);
   }
 
   function tapMotionCandidates() {
@@ -105,6 +166,8 @@ async function main() {
   window.desktopMascot = {
     tap: playTapMotion,
     idle: playIdle,
+    startTalking,
+    stopTalking,
   };
 
   document.addEventListener("contextmenu", (event) => {
@@ -150,6 +213,10 @@ async function main() {
       playTapMotion();
     } else if (action === "idle") {
       playIdle();
+    } else if (action === "talk-start") {
+      startTalking();
+    } else if (action === "talk-stop") {
+      stopTalking();
     }
   });
 
