@@ -18,7 +18,7 @@ def clean_model_reply(text: str) -> str:
             lines.append(line)
     text = " ".join(lines)
     text = re.sub(r"\s+", " ", text).strip()
-    first_sentence = re.split(r"(?<=[。.!！?？])\s*", text, maxsplit=1)[0].strip()
+    first_sentence = re.split(r"(?<=[。.])\s*", text, maxsplit=1)[0].strip()
     text = first_sentence or text
     if len(text) > 60:
         text = text[:60].rstrip() + "..."
