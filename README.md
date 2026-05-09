@@ -16,7 +16,7 @@ python desktop_mascot.py
 
 In `.env`, set `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and a model that supports image input.
 
-For TTS, set `TTS_PROVIDER`, `TTS_API_KEY`, `TTS_BASE_URL`, `TTS_MODEL`, `TTS_VOICE_ZH`, `TTS_VOICE_JA`
+For TTS, set `TTS_PROVIDER`, `TTS_API_KEY`, `TTS_BASE_URL`, `TTS_MODEL`, `TTS_VOICE_ZH`, `TTS_VOICE_JA`.
 
 ## Live2D Model
 
@@ -46,25 +46,3 @@ If the model is missing or Live2D fails to start, the app falls back to the buil
 `AUTO_OBSERVE_INTERVAL_SECONDS=30` controls the interval.
 
 The mascot only replies with one short spoken sentence by default. You can adjust the style with `MASCOT_SYSTEM_PROMPT`.
-
-## Build EXE
-
-Install PyInstaller:
-
-```powershell
-python -m pip install pyinstaller
-```
-
-Build with the checked-in spec file:
-
-```powershell
-python -m PyInstaller --clean --noconfirm desktop_mascot.spec
-```
-
-Run the packaged app:
-
-```powershell
-dist\desktop_mascot.exe
-```
-
-Use the spec file instead of only running a long `pyinstaller` command. The current build intentionally does not set a custom icon, so Tk/PyInstaller use their default window icon.

@@ -1,17 +1,12 @@
 import os
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from prompts import normalize_language
 
 
-if getattr(sys, "frozen", False):
-    APP_DIR = Path(sys.executable).resolve().parent
-    RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR))
-else:
-    APP_DIR = Path(__file__).resolve().parent
-    RESOURCE_DIR = APP_DIR
+APP_DIR = Path(__file__).resolve().parent
+RESOURCE_DIR = APP_DIR
 
 ENV_FILE = APP_DIR / ".env"
 

@@ -206,10 +206,7 @@ class Live2DMascotWindow:
 
 
 def _child_command(callback_url: str, control_url: str, assets_dir: Path) -> list[str]:
-    if getattr(sys, "frozen", False):
-        command = [sys.executable]
-    else:
-        command = [sys.executable, str(APP_DIR / "desktop_mascot.py")]
+    command = [sys.executable, str(APP_DIR / "desktop_mascot.py")]
     command.extend(
         [
             "--live2d-child",

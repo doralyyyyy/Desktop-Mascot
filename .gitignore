@@ -9,8 +9,6 @@ env/
 ENV/
 .pytest_cache/
 output/
-build/
-dist/
 tmp/
 node_modules/
 live2d_preview/node_modules/
