@@ -11,3 +11,11 @@ ENV/
 output/
 build/
 dist/
+tmp/
+node_modules/
+live2d_preview/node_modules/
+live2d_preview/__pycache__/
+tmp_live2d_*.html
+tmp_live2d_*.js
+assets/live2d/
+live2d_preview/models/

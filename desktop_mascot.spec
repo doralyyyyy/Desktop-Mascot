@@ -5,7 +5,7 @@ a = Analysis(
     ['desktop_mascot.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('assets', 'assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

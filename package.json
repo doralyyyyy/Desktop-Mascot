@@ -1,0 +1,9 @@
+{
+  "name": "desktop-mascot-live2d",
+  "version": "0.1.0",
+  "private": true,
+  "main": "electron_main.js",
+  "dependencies": {
+    "electron": "^29.4.6"
+  }
+}

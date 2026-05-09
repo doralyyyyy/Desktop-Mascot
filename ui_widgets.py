@@ -1,6 +1,14 @@
-﻿import tkinter as tk
+import ctypes
+import tkinter as tk
 import tkinter.font as tkfont
 from typing import Callable
+
+
+def _windows_mouse_button_down(button: int) -> bool:
+    try:
+        return bool(ctypes.windll.user32.GetAsyncKeyState(button) & 0x8000)
+    except Exception:
+        return False
 
 
 class PillButton(tk.Canvas):
@@ -327,6 +335,7 @@ class RoundedPopupMenu:
         self.padding = 8
         self.radius = 14
         self.transparent = "#ff00fe"
+        self._outside_check_after_id: str | None = None
 
     def show(self, x: int, y: int) -> None:
         self.close()
@@ -355,13 +364,47 @@ class RoundedPopupMenu:
 
         self._draw()
         self.window.focus_force()
+        self._schedule_outside_click_check()
 
     def close(self) -> None:
+        if self._outside_check_after_id is not None:
+            try:
+                self.root.after_cancel(self._outside_check_after_id)
+            except tk.TclError:
+                pass
+        self._outside_check_after_id = None
         if self.window is not None:
             self.window.destroy()
         self.window = None
         self.canvas = None
         self.hover_index = None
+
+    def _schedule_outside_click_check(self) -> None:
+        if self.window is None:
+            return
+        self._outside_check_after_id = self.root.after(50, self._close_if_clicked_outside)
+
+    def _close_if_clicked_outside(self) -> None:
+        self._outside_check_after_id = None
+        if self.window is None:
+            return
+        left_pressed = bool(self.root.tk.call("tk", "windowingsystem") == "win32" and _windows_mouse_button_down(0x01))
+        right_pressed = bool(self.root.tk.call("tk", "windowingsystem") == "win32" and _windows_mouse_button_down(0x02))
+        if (left_pressed or right_pressed) and not self._pointer_inside_menu():
+            self.close()
+            return
+        self._schedule_outside_click_check()
+
+    def _pointer_inside_menu(self) -> bool:
+        if self.window is None:
+            return False
+        x = self.window.winfo_pointerx()
+        y = self.window.winfo_pointery()
+        left = self.window.winfo_rootx()
+        top = self.window.winfo_rooty()
+        right = left + self.window.winfo_width()
+        bottom = top + self.window.winfo_height()
+        return left <= x <= right and top <= y <= bottom
 
     def _draw(self) -> None:
         if not self.canvas:

@@ -7,8 +7,10 @@ import tkinter as tk
 from collections.abc import Callable
 from tkinter import messagebox
 
-from config import AppConfig
+from config import AppConfig, RESOURCE_DIR
+from live2d_mascot import Live2DMascotWindow, live2d_runtime_available, run_live2d_child
 from llm_client import LLMClient
+from mascot_art import draw_mascot
 from prompts import context_cleared_message, welcome_message
 from tts import AITTS
 from ui_widgets import ChatBubble, PillButton, RoundedPopupMenu, TogglePill
@@ -57,7 +59,7 @@ class AutoObserver:
 
     def start(self) -> None:
         self._running = True
-        self.root.after(5000, self._tick)
+        self.root.after(10000, self._tick)
 
     def stop(self) -> None:
         self._running = False
@@ -335,13 +337,15 @@ class MascotWindow:
         self.drag_start: tuple[int, int] | None = None
         self.click_start: tuple[int, int] | None = None
         self.mood = 0
+        self.gif_frames: list[tk.PhotoImage] = []
+        self.gif_frame_index = 0
+        self.gif_frame_delay_ms = 120
 
         self.transparent = "#00ff01"
         root.overrideredirect(True)
         root.attributes("-topmost", True)
         root.attributes("-transparentcolor", self.transparent)
         root.configure(bg=self.transparent)
-        root.geometry("150x170+80+300")
 
         self.canvas = tk.Canvas(root, width=150, height=170, bg=self.transparent, highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
@@ -352,35 +356,46 @@ class MascotWindow:
 
         self.menu: RoundedPopupMenu | None = None
 
+        self._position_near_bottom_right()
+        self._load_gif_frames()
         self._draw()
         self._animate()
 
+    def _position_near_bottom_right(self) -> None:
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        x = max(0, screen_width - 150 - 120)
+        y = max(0, screen_height - 170 - 80)
+        self.root.geometry(f"150x170+{x}+{y}")
+
+    def _load_gif_frames(self) -> None:
+        path = RESOURCE_DIR / "assets" / "mascot.gif"
+        frames: list[tk.PhotoImage] = []
+        index = 0
+        while True:
+            try:
+                frames.append(tk.PhotoImage(file=str(path), format=f"gif -index {index}"))
+            except tk.TclError:
+                break
+            index += 1
+        self.gif_frames = frames
+
     def _draw(self) -> None:
+        if not self.gif_frames:
+            draw_mascot(self.canvas, self.mood)
+            return
+
         self.canvas.delete("all")
-        bob = 4 if self.mood % 2 else 0
-
-        self.canvas.create_oval(33, 36 + bob, 117, 126 + bob, fill="#ffd66b", outline="#6f4b16", width=3)
-        self.canvas.create_oval(24, 72 + bob, 48, 102 + bob, fill="#ffbf55", outline="#6f4b16", width=2)
-        self.canvas.create_oval(102, 72 + bob, 126, 102 + bob, fill="#ffbf55", outline="#6f4b16", width=2)
-        self.canvas.create_oval(47, 65 + bob, 67, 85 + bob, fill="#ffffff", outline="#6f4b16", width=2)
-        self.canvas.create_oval(83, 65 + bob, 103, 85 + bob, fill="#ffffff", outline="#6f4b16", width=2)
-        self.canvas.create_oval(56, 72 + bob, 63, 80 + bob, fill="#222222", outline="")
-        self.canvas.create_oval(92, 72 + bob, 99, 80 + bob, fill="#222222", outline="")
-        self.canvas.create_arc(58, 83 + bob, 94, 108 + bob, start=200, extent=140, style="arc", outline="#6f4b16", width=3)
-        self.canvas.create_oval(43, 90 + bob, 57, 101 + bob, fill="#ff9c8a", outline="")
-        self.canvas.create_oval(93, 90 + bob, 107, 101 + bob, fill="#ff9c8a", outline="")
-
-        self.canvas.create_line(51, 45 + bob, 43, 22 + bob, fill="#6f4b16", width=3)
-        self.canvas.create_oval(35, 13 + bob, 50, 28 + bob, fill="#7dd3fc", outline="#25637a", width=2)
-        self.canvas.create_line(99, 45 + bob, 107, 22 + bob, fill="#6f4b16", width=3)
-        self.canvas.create_oval(100, 13 + bob, 115, 28 + bob, fill="#7dd3fc", outline="#25637a", width=2)
-        self.canvas.create_oval(52, 124 + bob, 98, 154 + bob, fill="#8bd17c", outline="#356326", width=3)
-        self.canvas.create_text(75, 143 + bob, text="AI", fill="#1f3b19", font=("Segoe UI", 12, "bold"))
+        frame = self.gif_frames[self.gif_frame_index]
+        self.canvas.create_image(75, 85, image=frame, anchor="center")
 
     def _animate(self) -> None:
         self.mood += 1
+        if self.gif_frames:
+            self.gif_frame_index = (self.gif_frame_index + 1) % len(self.gif_frames)
         self._draw()
-        self.root.after(650, self._animate)
+        delay = self.gif_frame_delay_ms if self.gif_frames else 650
+        self.root.after(delay, self._animate)
 
     def _start_drag(self, event: tk.Event) -> None:
         self.drag_start = (event.x_root, event.y_root)
@@ -429,6 +444,9 @@ class MascotWindow:
 
 
 def main() -> int:
+    if "--live2d-child" in sys.argv:
+        return run_live2d_child(sys.argv[1:])
+
     set_windows_app_id()
     config = AppConfig.from_env()
     print(
@@ -441,11 +459,23 @@ def main() -> int:
     )
     root = tk.Tk()
     root.title("Desktop Mascot")
+    use_live2d = live2d_runtime_available()
+    if use_live2d:
+        root.withdraw()
 
     tts = AITTS(config, config.language)
     llm = LLMClient(config)
     chat = ChatWindow(root, llm, tts, config)
-    mascot = MascotWindow(root, chat, tts)
+    mascot: MascotWindow | Live2DMascotWindow
+    if use_live2d:
+        try:
+            mascot = Live2DMascotWindow(root, chat, tts)
+        except Exception as exc:
+            print(f"Live2D mascot unavailable, falling back to canvas mascot: {exc}", flush=True)
+            root.deiconify()
+            mascot = MascotWindow(root, chat, tts)
+    else:
+        mascot = MascotWindow(root, chat, tts)
     observer = AutoObserver(root, llm, chat, tts, config)
     chat.auto_observer = observer
     observer.start()
@@ -459,6 +489,8 @@ def main() -> int:
     root.mainloop()
     observer.stop()
     tts.stop()
+    if isinstance(mascot, Live2DMascotWindow):
+        mascot.destroy()
     _ = mascot
     return 0
 
