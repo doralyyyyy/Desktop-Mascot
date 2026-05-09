@@ -11,12 +11,15 @@ python -m pip install -r requirements.txt
 npm install --registry=https://registry.npmmirror.com
 Copy-Item .env.example .env
 notepad .env
-python desktop_mascot.py
 ```
 
 In `.env`, set `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and a model that supports image input.
 
 For TTS, set `TTS_PROVIDER`, `TTS_API_KEY`, `TTS_BASE_URL`, `TTS_MODEL`, `TTS_VOICE_ZH`, `TTS_VOICE_JA`.
+
+```powershell
+python desktop_mascot.py
+```
 
 ## Live2D Model
 

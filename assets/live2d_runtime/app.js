@@ -3,7 +3,16 @@ function modelUrlFromQuery() {
   return params.get("model") || "/live2d/model/model.model3.json";
 }
 
+const MODEL_SAFE_WIDTH = 0.9;
+const MODEL_SAFE_HEIGHT = 0.92;
+const MODEL_X = 0.52;
+const MODEL_BOTTOM = 0.04;
+
 async function main() {
+  const motionPriority = PIXI.live2d?.MotionPriority || {};
+  const tapMotionPriority = motionPriority.FORCE ?? 3;
+  let lastTapMotionKey = "";
+
   const app = new PIXI.Application({
     view: document.getElementById("stage"),
     resizeTo: window,
@@ -26,14 +35,14 @@ async function main() {
       `w=${bounds.width.toFixed(1)} h=${bounds.height.toFixed(1)}`,
     );
     const scale = Math.min(
-      window.innerWidth / bounds.width,
-      window.innerHeight / bounds.height,
-    ) * 1.08;
+      (window.innerWidth * MODEL_SAFE_WIDTH) / bounds.width,
+      (window.innerHeight * MODEL_SAFE_HEIGHT) / bounds.height,
+    );
 
     model.scale.set(scale);
     model.anchor.set(0.5, 1.0);
-    model.x = window.innerWidth * 0.55;
-    model.y = window.innerHeight * 0.99;
+    model.x = window.innerWidth * MODEL_X;
+    model.y = window.innerHeight * (1 - MODEL_BOTTOM);
   }
 
   function playIdle() {
@@ -44,8 +53,49 @@ async function main() {
     }
   }
 
-  function playTapMotion() {
-    playIdle();
+  function tapMotionCandidates() {
+    const motionManager = model.internalModel?.motionManager;
+    const definitions = motionManager?.definitions || {};
+    const idleGroup = motionManager?.groups?.idle || "Idle";
+    return Object.entries(definitions).flatMap(([group, motions]) => {
+      if (group === idleGroup || group.toLowerCase() === "idle" || !Array.isArray(motions)) {
+        return [];
+      }
+      return motions.map((_motion, index) => ({ group, index }));
+    });
+  }
+
+  function chooseTapMotion() {
+    const candidates = tapMotionCandidates();
+    if (!candidates.length) {
+      return null;
+    }
+
+    const reusable = candidates.filter(
+      (motion) => `${motion.group}:${motion.index}` !== lastTapMotionKey,
+    );
+    const pool = reusable.length ? reusable : candidates;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  async function playTapMotion() {
+    const tapMotion = chooseTapMotion();
+    if (!tapMotion) {
+      playIdle();
+      return;
+    }
+
+    lastTapMotionKey = `${tapMotion.group}:${tapMotion.index}`;
+    try {
+      await model.expression();
+      const started = await model.motion(tapMotion.group, tapMotion.index, tapMotionPriority);
+      if (!started) {
+        playIdle();
+      }
+    } catch (error) {
+      console.debug("Live2D tap motion failed", error);
+      playIdle();
+    }
   }
 
   fitModel();

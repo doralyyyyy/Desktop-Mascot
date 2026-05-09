@@ -213,10 +213,14 @@ function createWindow() {
 
   ipcMain.on("mascot-pointer-up", (_event, point) => {
     const current = normalizePoint(point);
-    log(`Pointer up ${JSON.stringify(current)} dragging=${dragging}`);
+    const wasDragging = dragging;
+    log(`Pointer up ${JSON.stringify(current)} dragging=${wasDragging}`);
     pressPoint = null;
     pressBounds = null;
     dragging = false;
+    if (!wasDragging) {
+      win?.webContents.send("desktop-action", "tap");
+    }
   });
 
   ipcMain.on("mascot-context-menu", (_event, point) => {

@@ -156,7 +156,7 @@ class Live2DMascotWindow:
 
     def _handle_event(self, event_type: str, x: int, y: int) -> None:
         if event_type == "click":
-            self.chat.show()
+            return
         elif event_type == "contextmenu":
             self._show_menu(x, y)
         elif event_type == "quit":
